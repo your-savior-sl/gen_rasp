@@ -68,7 +68,6 @@
             font-size: 1em;
             color: var(--text);
         }
-        /* СЕТКА: каждая дата — одна строка из двух карточек */
         .columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -159,7 +158,6 @@
         }
         .hidden { display: none; }
 
-        /* КОМПАКТНЫЙ РЕЖИМ ДЛЯ ТЕЛЕФОНА */
         @media (max-width: 900px) {
             body { padding: 10px; }
             .columns { gap: 8px; }
@@ -209,7 +207,6 @@
 
 <script>
     // ================= ДАННЫЕ ОБЕИХ ГРУПП =================
-    // (с преподавателями, местами и временем начала — где они известны)
 
     const DATA = {
         "411": {
@@ -251,7 +248,16 @@
                 { subj: "Основы формирования здоровья детей", time: "13:50-15:10", loc: "ул. Литовская, 2, литера Я, ауд. № 1", dates: "27.11, 04.12, 11.12" }
             ],
             practicals: [
-                { subj: "Анестезиология, реанимация, ИТ", start: "01.09", end: "16.09" },
+                { 
+                    subj: "Анестезиология, реанимация, ИТ", 
+                    start: "01.09", 
+                    end: "16.09",
+                    // Специальные данные ТОЛЬКО для 1 и 2 сентября
+                    specialDays: [
+                        { date: "01.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", time: "9:30", teacher: "Виталий Анвярович" },
+                        { date: "02.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", time: "9:30", teacher: "Виталий Анвярович" }
+                    ]
+                },
                 { subj: "Факультетская педиатрия, эндокринология", start: "17.09", end: "03.10" },
                 { subj: "Факультетская терапия, проф. болезни", start: "05.10", end: "17.10" },
                 { subj: "Оториноларингология", start: "19.10", end: "31.10" },
@@ -310,7 +316,8 @@
                     start: parseDate(p.start), end: parseDate(p.end),
                     location: p.loc || "По расписанию кафедр",
                     teacher: p.teacher || null,
-                    note: p.note || null
+                    note: p.note || null,
+                    specialDays: p.specialDays || null
                 });
             });
             schedules[key].sort((a, b) => (a.date || a.start) - (b.date || b.start));
@@ -324,6 +331,14 @@
         return new Date(d.setDate(diff));
     }
 
+    // Проверка, есть ли для данной даты специальные данные у практики
+    function getSpecialForDate(event, date) {
+        if (event.type !== 'Практика' || !event.specialDays) return null;
+        const dStr = fmtShort(date);
+        const found = event.specialDays.find(s => s.date === dStr);
+        return found || null;
+    }
+
     function getEventsForDate(key, date) {
         if (date.getDay() === 6) return [];      // СУББОТА — выходной
         if (date.getDay() === 0) return [];      // воскресенье — выходной
@@ -331,28 +346,58 @@
         let lectures = [], practicals = [];
         schedules[key].forEach(e => {
             if (e.type === 'Лекция') {
-                if (e.date.toDateString() === date.toDateString()) lectures.push(e);
+                if (e.date.toDateString() === date.toDateString()) lectures.push({...e, _date: date});
             } else if (e.type === 'Практика') {
-                if (date >= e.start && date <= e.end) practicals.push(e);
+                if (date >= e.start && date <= e.end) {
+                    // Копируем событие и добавляем специальные данные, если они есть
+                    const evCopy = {...e, _date: date};
+                    const special = getSpecialForDate(e, date);
+                    if (special) {
+                        evCopy.location = special.loc;
+                        evCopy.time = "Практика"; // чтобы показать только время начала
+                        evCopy.specialTime = special.time;
+                        evCopy.teacher = special.teacher;
+                        evCopy.note = null;
+                        evCopy.isSpecial = true;
+                    }
+                    practicals.push(evCopy);
+                }
             }
         });
-        return practicals.concat(lectures); // практика первой строкой
+        return practicals.concat(lectures);
     }
 
     function createEventEl(e) {
         const div = document.createElement('div');
         div.className = 'event';
         const badgeClass = e.type === 'Лекция' ? 'lec' : 'prac';
-        const timeText = e.type === 'Лекция' ? e.time : (fmtShort(e.start) + ' – ' + fmtShort(e.end));
+        
+        let timeText;
+        if (e.type === 'Лекция') {
+            timeText = e.time;
+        } else if (e.isSpecial) {
+            timeText = "🕘 " + e.specialTime;
+        } else {
+            timeText = fmtShort(e.start) + ' – ' + fmtShort(e.end);
+        }
+        
         let extra = `<div class="location">📍 ${e.location}</div>`;
-        if (e.teacher) extra += `<div class="location">👨🏫 Преподаватель: ${e.teacher}</div>`;
+        if (e.teacher) extra += `<div class="location">👨‍🏫 ${e.teacher}</div>`;
         if (e.note)    extra += `<div class="location">⏰ ${e.note}</div>`;
+        
+        // Для практики со спец. данными показываем период цикла мелким шрифтом
+        let periodNote = '';
+        if (e.type === 'Практика' && e.isSpecial) {
+            periodNote = `<div class="location" style="opacity:0.7">Цикл: ${fmtShort(e.start)} – ${fmtShort(e.end)}</div>`;
+        }
+        
         div.innerHTML = `
             <div class="time">${timeText}</div>
             <div>
                 <span class="badge ${badgeClass}">${e.type}</span>
                 <div class="title">${e.title}</div>
                 ${extra}
+                ${periodNote}
             </div>
         `;
         return div;
@@ -399,7 +444,6 @@
         grid.appendChild(h2);
     }
 
-    // Одна строка = одна дата: карточка 411 слева, карточка 430 справа
     function renderRow(grid, date) {
         const ev1 = getEventsForDate('411', date);
         const ev2 = getEventsForDate('430', date);
@@ -474,7 +518,6 @@
         updateDisplay();
     }
 
-    // Запуск
     initSchedule();
     document.getElementById('date-input').value = formatDateInput(new Date());
     setView('all');
