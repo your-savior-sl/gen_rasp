@@ -68,12 +68,12 @@
             font-size: 1em;
             color: var(--text);
         }
-        /* ДВЕ КОЛОНКИ — ВСЕГДА РЯДОМ */
+        /* СЕТКА: каждая дата — одна строка из двух карточек */
         .columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            align-items: start;
+            gap: 12px;
+            align-items: stretch;
         }
         .col-header {
             text-align: center;
@@ -82,11 +82,10 @@
             color: white;
             font-weight: 700;
             font-size: 1.1em;
-            margin-bottom: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
-        .col-411 .col-header { background: var(--primary); }
-        .col-430 .col-header { background: var(--ped); }
+        .h411 { background: var(--primary); }
+        .h430 { background: var(--ped); }
         .faculty-tag {
             display: block;
             font-size: 0.75em;
@@ -94,11 +93,18 @@
             opacity: 0.9;
             margin-top: 3px;
         }
+        .month-header {
+            grid-column: 1 / -1;
+            text-transform: capitalize;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 5px;
+            margin: 10px 0 0 0;
+        }
         .day-card {
             background: var(--card-bg);
             border-radius: 12px;
             padding: 15px;
-            margin-bottom: 15px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
         .day-header {
@@ -110,13 +116,19 @@
             color: #4b5563;
             text-transform: capitalize;
         }
-        .month-header {
-            text-transform: capitalize;
-            color: var(--primary);
-            border-bottom: 2px solid var(--primary);
-            padding-bottom: 5px;
+        .placeholder {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.5);
         }
-        .col-430 .month-header { color: var(--ped); border-color: var(--ped); }
+        .span-all { grid-column: 1 / -1; }
         .event {
             display: flex;
             align-items: flex-start;
@@ -147,20 +159,21 @@
         }
         .hidden { display: none; }
 
-        /* КОМПАКТНЫЙ РЕЖИМ ДЛЯ ТЕЛЕФОНА (колонки всё равно рядом) */
+        /* КОМПАКТНЫЙ РЕЖИМ ДЛЯ ТЕЛЕФОНА */
         @media (max-width: 900px) {
             body { padding: 10px; }
-            .columns { gap: 10px; }
+            .columns { gap: 8px; }
             .tab-btn { padding: 8px 12px; font-size: 0.85em; }
             .col-header { font-size: 0.95em; padding: 8px; }
             .faculty-tag { font-size: 0.7em; }
-            .day-card { padding: 10px; margin-bottom: 10px; }
+            .day-card { padding: 10px; }
             .day-header { font-size: 0.85em; }
             .month-header { font-size: 0.9em; }
             .event { flex-direction: column; gap: 4px; padding: 8px 0; }
             .time { min-width: 0; font-size: 0.8em; }
             .title { font-size: 0.85em; }
             .location { font-size: 0.72em; }
+            .placeholder { font-size: 0.75em; padding: 10px; }
             .empty-state { padding: 20px; font-size: 0.85em; }
         }
     </style>
@@ -191,20 +204,7 @@
         <input type="date" id="date-input" onchange="updateDisplay()">
     </div>
 
-    <div class="columns">
-        <div class="column col-411">
-            <div class="col-header">Группа 411
-                <span class="faculty-tag">Лечебный факультет</span>
-            </div>
-            <div id="content-411"></div>
-        </div>
-        <div class="column col-430">
-            <div class="col-header">Группа 430
-                <span class="faculty-tag">Педиатрический факультет</span>
-            </div>
-            <div id="content-430"></div>
-        </div>
-    </div>
+    <div class="columns" id="schedule-grid"></div>
 </div>
 
 <script>
@@ -359,79 +359,95 @@
         return card;
     }
 
+    function placeholderCard(date) {
+        const div = document.createElement('div');
+        div.className = 'placeholder';
+        div.textContent = emptyMessage(date);
+        return div;
+    }
+
     function emptyMessage(date) {
         if (isHoliday(date)) return 'Новогодние праздники — занятий нет 🎄';
         if (date.getDay() === 0) return 'Воскресенье — выходной 🎉';
         return 'Занятий нет 🎉';
     }
 
-    function renderGroupDay(key, date) {
-        const box = document.getElementById('content-' + key);
-        box.innerHTML = '';
-        const events = getEventsForDate(key, date);
-        if (events.length === 0) {
-            box.innerHTML = `<div class="empty-state">${emptyMessage(date)}</div>`;
-            return;
-        }
-        box.appendChild(renderDayCard(date, events));
+    function spanEmpty(msg) {
+        const d = document.createElement('div');
+        d.className = 'empty-state span-all';
+        d.textContent = msg;
+        return d;
     }
 
-    function renderGroupWeek(key, monday) {
-        const box = document.getElementById('content-' + key);
-        box.innerHTML = '';
-        let has = false;
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(monday);
-            d.setDate(monday.getDate() + i);
-            const ev = getEventsForDate(key, d);
-            if (ev.length > 0) { has = true; box.appendChild(renderDayCard(d, ev)); }
-        }
-        if (!has) box.innerHTML = '<div class="empty-state">На этой неделе занятий нет 🎉</div>';
+    function addHeaders(grid) {
+        const h1 = document.createElement('div');
+        h1.className = 'col-header h411';
+        h1.innerHTML = 'Группа 411<span class="faculty-tag">Лечебный факультет</span>';
+        const h2 = document.createElement('div');
+        h2.className = 'col-header h430';
+        h2.innerHTML = 'Группа 430<span class="faculty-tag">Педиатрический факультет</span>';
+        grid.appendChild(h1);
+        grid.appendChild(h2);
     }
 
-    function renderGroupAll(key) {
-        const box = document.getElementById('content-' + key);
-        box.innerHTML = '';
-        const start = new Date(2026, 8, 1);
-        const end   = new Date(2027, 0, 16);
-        const months = {};
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const day = new Date(d);
-            const ev = getEventsForDate(key, day);
-            if (ev.length === 0) continue;
-            const mk = day.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-            if (!months[mk]) months[mk] = [];
-            months[mk].push({ date: day, events: ev });
-        }
-        Object.keys(months).forEach(mk => {
-            const md = document.createElement('div');
-            md.innerHTML = `<h3 class="month-header">${mk}</h3>`;
-            months[mk].forEach(g => md.appendChild(renderDayCard(g.date, g.events)));
-            box.appendChild(md);
-        });
+    // Одна строка = одна дата: карточка 411 слева, карточка 430 справа
+    function renderRow(grid, date) {
+        const ev1 = getEventsForDate('411', date);
+        const ev2 = getEventsForDate('430', date);
+        if (ev1.length === 0 && ev2.length === 0) return false;
+        grid.appendChild(ev1.length ? renderDayCard(date, ev1) : placeholderCard(date));
+        grid.appendChild(ev2.length ? renderDayCard(date, ev2) : placeholderCard(date));
+        return true;
     }
 
     function updateDisplay() {
+        const grid = document.getElementById('schedule-grid');
+        grid.innerHTML = '';
+        addHeaders(grid);
+
         if (currentView === 'today') {
             const t = new Date();
-            renderGroupDay('411', t); renderGroupDay('430', t);
-        } else if (currentView === 'week') {
-            renderGroupWeek('411', currentMonday); renderGroupWeek('430', currentMonday);
-            const sun = new Date(currentMonday); sun.setDate(currentMonday.getDate() + 6);
-            document.getElementById('week-range').innerText =
-                `${currentMonday.toLocaleDateString('ru-RU')} — ${sun.toLocaleDateString('ru-RU')}`;
+            if (!renderRow(grid, t)) grid.appendChild(spanEmpty('Сегодня: ' + emptyMessage(t).toLowerCase()));
         } else if (currentView === 'date') {
             const v = document.getElementById('date-input').value;
             if (!v) {
-                document.getElementById('content-411').innerHTML = '<div class="empty-state">Выберите дату 📅</div>';
-                document.getElementById('content-430').innerHTML = '<div class="empty-state">Выберите дату 📅</div>';
+                grid.appendChild(spanEmpty('Выберите дату 📅'));
                 return;
             }
             const [y, m, d] = v.split('-').map(Number);
             const date = new Date(y, m - 1, d);
-            renderGroupDay('411', date); renderGroupDay('430', date);
+            if (!renderRow(grid, date)) grid.appendChild(spanEmpty(emptyMessage(date)));
+        } else if (currentView === 'week') {
+            let any = false;
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(currentMonday);
+                d.setDate(currentMonday.getDate() + i);
+                if (renderRow(grid, d)) any = true;
+            }
+            if (!any) grid.appendChild(spanEmpty('На этой неделе занятий нет 🎉'));
+            const sun = new Date(currentMonday);
+            sun.setDate(currentMonday.getDate() + 6);
+            document.getElementById('week-range').innerText =
+                `${currentMonday.toLocaleDateString('ru-RU')} — ${sun.toLocaleDateString('ru-RU')}`;
         } else if (currentView === 'all') {
-            renderGroupAll('411'); renderGroupAll('430');
+            const start = new Date(2026, 8, 1);
+            const end   = new Date(2027, 0, 16);
+            let curMonth = '';
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const day = new Date(d);
+                const ev1 = getEventsForDate('411', day);
+                const ev2 = getEventsForDate('430', day);
+                if (ev1.length === 0 && ev2.length === 0) continue;
+                const mk = day.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+                if (mk !== curMonth) {
+                    curMonth = mk;
+                    const mh = document.createElement('h3');
+                    mh.className = 'month-header';
+                    mh.textContent = mk;
+                    grid.appendChild(mh);
+                }
+                renderRow(grid, day);
+            }
         }
     }
 
