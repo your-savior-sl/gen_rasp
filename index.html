@@ -209,6 +209,7 @@
 
 <script>
     // ================= ДАННЫЕ ОБЕИХ ГРУПП =================
+    // (с преподавателями, местами и временем начала — где они известны)
 
     const DATA = {
         "411": {
@@ -223,12 +224,12 @@
                 { subj: "Офтальмология", time: "13:50-15:10", loc: "ул. Литовская, 2, литера Я, ауд. № 8", dates: "04.09, 18.09, 02.10, 16.10, 30.10, 13.11, 27.11, 04.12, 11.12, 18.12, 25.12, 15.01" }
             ],
             practicals: [
-                { subj: "Урология", start: "01.09", end: "19.09" },
+                { subj: "Урология", start: "01.09", end: "19.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", teacher: "Куренков Александр Викторович", note: "Начало занятий в 9:30" },
                 { subj: "Факультетская терапия", start: "21.09", end: "10.10" },
                 { subj: "Оказание первой врачебной помощи", start: "12.10", end: "17.10" },
                 { subj: "Дерматология", start: "19.10", end: "31.10" },
                 { subj: "Неврология", start: "02.11", end: "14.11" },
-                { subj: "Факультетская хирургия", start: "16.11", end: "25.11" },
+                { subj: "Факультетская хирургия", start: "16.11", end: "25.11", loc: "НИИ Скорой помощи им. И.И. Джанелидзе", teacher: "Ульянов Юрий Николаевич", note: "Время занятий уточняется" },
                 { subj: "Офтальмология", start: "26.11", end: "12.12" },
                 { subj: "Акушерство и гинекология", start: "14.12", end: "16.01" }
             ]
@@ -255,7 +256,7 @@
                 { subj: "Факультетская терапия, проф. болезни", start: "05.10", end: "17.10" },
                 { subj: "Оториноларингология", start: "19.10", end: "31.10" },
                 { subj: "Травматология и ортопедия", start: "02.11", end: "11.11" },
-                { subj: "Факультетская хирургия", start: "12.11", end: "18.11" },
+                { subj: "Факультетская хирургия", start: "12.11", end: "18.11", loc: "Мариинская больница", teacher: "Липская Елена Викторовна", note: "Время начала уточняется" },
                 { subj: "Стоматология", start: "19.11", end: "25.11" },
                 { subj: "Медицинская реабилитация", start: "26.11", end: "09.12" },
                 { subj: "Основы формирования здоровья детей", start: "10.12", end: "16.12" },
@@ -298,7 +299,8 @@
                 l.dates.split(',').map(d => d.trim()).forEach(dStr => {
                     schedules[key].push({
                         type: 'Лекция', title: l.subj, time: l.time,
-                        date: parseDate(dStr), location: l.loc
+                        date: parseDate(dStr), location: l.loc,
+                        teacher: null, note: null
                     });
                 });
             });
@@ -306,7 +308,9 @@
                 schedules[key].push({
                     type: 'Практика', title: p.subj, time: "Практика (цикл)",
                     start: parseDate(p.start), end: parseDate(p.end),
-                    location: "По расписанию кафедр"
+                    location: p.loc || "По расписанию кафедр",
+                    teacher: p.teacher || null,
+                    note: p.note || null
                 });
             });
             schedules[key].sort((a, b) => (a.date || a.start) - (b.date || b.start));
@@ -321,7 +325,8 @@
     }
 
     function getEventsForDate(key, date) {
-        if (date.getDay() === 0) return [];      // воскресенье
+        if (date.getDay() === 6) return [];      // СУББОТА — выходной
+        if (date.getDay() === 0) return [];      // воскресенье — выходной
         if (isHoliday(date)) return [];          // новогодние праздники
         let lectures = [], practicals = [];
         schedules[key].forEach(e => {
@@ -339,12 +344,15 @@
         div.className = 'event';
         const badgeClass = e.type === 'Лекция' ? 'lec' : 'prac';
         const timeText = e.type === 'Лекция' ? e.time : (fmtShort(e.start) + ' – ' + fmtShort(e.end));
+        let extra = `<div class="location">📍 ${e.location}</div>`;
+        if (e.teacher) extra += `<div class="location">👨🏫 Преподаватель: ${e.teacher}</div>`;
+        if (e.note)    extra += `<div class="location">⏰ ${e.note}</div>`;
         div.innerHTML = `
             <div class="time">${timeText}</div>
             <div>
                 <span class="badge ${badgeClass}">${e.type}</span>
                 <div class="title">${e.title}</div>
-                <div class="location">${e.location}</div>
+                ${extra}
             </div>
         `;
         return div;
@@ -369,6 +377,7 @@
     function emptyMessage(date) {
         if (isHoliday(date)) return 'Новогодние праздники — занятий нет 🎄';
         if (date.getDay() === 0) return 'Воскресенье — выходной 🎉';
+        if (date.getDay() === 6) return 'Суббота — выходной 🎉';
         return 'Занятий нет 🎉';
     }
 
