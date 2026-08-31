@@ -68,15 +68,12 @@
             font-size: 1em;
             color: var(--text);
         }
-        /* ДВЕ КОЛОНКИ */
+        /* ДВЕ КОЛОНКИ — ВСЕГДА РЯДОМ */
         .columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 25px;
             align-items: start;
-        }
-        @media (max-width: 900px) {
-            .columns { grid-template-columns: 1fr; }
         }
         .col-header {
             text-align: center;
@@ -86,9 +83,6 @@
             font-weight: 700;
             font-size: 1.1em;
             margin-bottom: 15px;
-            position: sticky;
-            top: 10px;
-            z-index: 5;
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .col-411 .col-header { background: var(--primary); }
@@ -152,6 +146,23 @@
             border-radius: 12px;
         }
         .hidden { display: none; }
+
+        /* КОМПАКТНЫЙ РЕЖИМ ДЛЯ ТЕЛЕФОНА (колонки всё равно рядом) */
+        @media (max-width: 900px) {
+            body { padding: 10px; }
+            .columns { gap: 10px; }
+            .tab-btn { padding: 8px 12px; font-size: 0.85em; }
+            .col-header { font-size: 0.95em; padding: 8px; }
+            .faculty-tag { font-size: 0.7em; }
+            .day-card { padding: 10px; margin-bottom: 10px; }
+            .day-header { font-size: 0.85em; }
+            .month-header { font-size: 0.9em; }
+            .event { flex-direction: column; gap: 4px; padding: 8px 0; }
+            .time { min-width: 0; font-size: 0.8em; }
+            .title { font-size: 0.85em; }
+            .location { font-size: 0.72em; }
+            .empty-state { padding: 20px; font-size: 0.85em; }
+        }
     </style>
 </head>
 <body>
@@ -354,7 +365,6 @@
         return 'Занятий нет 🎉';
     }
 
-    // ---- отрисовка одной колонки ----
     function renderGroupDay(key, date) {
         const box = document.getElementById('content-' + key);
         box.innerHTML = '';
@@ -401,7 +411,6 @@
         });
     }
 
-    // ---- общие视图 ----
     function updateDisplay() {
         if (currentView === 'today') {
             const t = new Date();
