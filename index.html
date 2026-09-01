@@ -221,7 +221,18 @@
                 { subj: "Офтальмология", time: "13:50-15:10", loc: "ул. Литовская, 2, литера Я, ауд. № 8", dates: "04.09, 18.09, 02.10, 16.10, 30.10, 13.11, 27.11, 04.12, 11.12, 18.12, 25.12, 15.01" }
             ],
             practicals: [
-                { subj: "Урология", start: "01.09", end: "19.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", teacher: "Куренков Александр Викторович", note: "Начало занятий в 9:30" },
+                { 
+                    subj: "Урология", 
+                    start: "01.09", 
+                    end: "19.09",
+                    loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", 
+                    teacher: "Куренков Александр Викторович", 
+                    note: "Начало занятий в 9:30",
+                    specialDays: [
+                        { date: "02.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", time: "9:15", teacher: "Куренков Александр Викторович" },
+                        { date: "04.09", loc: "метро Чкаловская снаружи", time: "9:00 – 10:55" }
+                    ]
+                },
                 { subj: "Факультетская терапия", start: "21.09", end: "10.10" },
                 { subj: "Оказание первой врачебной помощи", start: "12.10", end: "17.10" },
                 { subj: "Дерматология", start: "19.10", end: "31.10" },
@@ -252,7 +263,6 @@
                     subj: "Анестезиология, реанимация, ИТ", 
                     start: "01.09", 
                     end: "16.09",
-                    // Специальные данные ТОЛЬКО для 1 и 2 сентября
                     specialDays: [
                         { date: "01.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", time: "9:30", teacher: "Виталий Анвярович" },
                         { date: "02.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", time: "9:30", teacher: "Виталий Анвярович" }
@@ -331,12 +341,10 @@
         return new Date(d.setDate(diff));
     }
 
-    // Проверка, есть ли для данной даты специальные данные у практики
     function getSpecialForDate(event, date) {
         if (event.type !== 'Практика' || !event.specialDays) return null;
         const dStr = fmtShort(date);
-        const found = event.specialDays.find(s => s.date === dStr);
-        return found || null;
+        return event.specialDays.find(s => s.date === dStr) || null;
     }
 
     function getEventsForDate(key, date) {
@@ -349,14 +357,12 @@
                 if (e.date.toDateString() === date.toDateString()) lectures.push({...e, _date: date});
             } else if (e.type === 'Практика') {
                 if (date >= e.start && date <= e.end) {
-                    // Копируем событие и добавляем специальные данные, если они есть
                     const evCopy = {...e, _date: date};
                     const special = getSpecialForDate(e, date);
                     if (special) {
                         evCopy.location = special.loc;
-                        evCopy.time = "Практика"; // чтобы показать только время начала
                         evCopy.specialTime = special.time;
-                        evCopy.teacher = special.teacher;
+                        evCopy.teacher = special.teacher || null;
                         evCopy.note = null;
                         evCopy.isSpecial = true;
                     }
@@ -385,7 +391,6 @@
         if (e.teacher) extra += `<div class="location">👨‍🏫 ${e.teacher}</div>`;
         if (e.note)    extra += `<div class="location">⏰ ${e.note}</div>`;
         
-        // Для практики со спец. данными показываем период цикла мелким шрифтом
         let periodNote = '';
         if (e.type === 'Практика' && e.isSpecial) {
             periodNote = `<div class="location" style="opacity:0.7">Цикл: ${fmtShort(e.start)} – ${fmtShort(e.end)}</div>`;
