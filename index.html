@@ -349,17 +349,21 @@
     }
 
     function getEventsForDate(key, date) {
-        if (date.getDay() === 6) return [];      // СУББОТА — выходной
-        if (date.getDay() === 0) return [];      // воскресенье — выходной
-        if (isHoliday(date)) return [];          // новогодние праздники
+        // ВАЖНО: приводим дату к полуночи, чтобы время суток не ломало сравнения
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        if (d.getDay() === 6) return [];      // СУББОТА — выходной
+        if (d.getDay() === 0) return [];      // воскресенье — выходной
+        if (isHoliday(d)) return [];          // новогодние праздники
+
         let lectures = [], practicals = [];
         schedules[key].forEach(e => {
             if (e.type === 'Лекция') {
-                if (e.date.toDateString() === date.toDateString()) lectures.push({...e, _date: date});
+                if (e.date.toDateString() === d.toDateString()) lectures.push({...e, _date: d});
             } else if (e.type === 'Практика') {
-                if (date >= e.start && date <= e.end) {
-                    const evCopy = {...e, _date: date};
-                    const special = getSpecialForDate(e, date);
+                if (d >= e.start && d <= e.end) {
+                    const evCopy = {...e, _date: d};
+                    const special = getSpecialForDate(e, d);
                     if (special) {
                         evCopy.location = special.loc;
                         evCopy.specialTime = special.time;
@@ -389,7 +393,7 @@
         }
         
         let extra = `<div class="location">📍 ${e.location}</div>`;
-        if (e.teacher) extra += `<div class="location">👨‍ ${e.teacher}</div>`;
+        if (e.teacher) extra += `<div class="location">👨‍🏫 ${e.teacher}</div>`;
         if (e.note)    extra += `<div class="location">⏰ ${e.note}</div>`;
         
         let periodNote = '';
