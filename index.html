@@ -235,7 +235,18 @@
                     ]
                 },
                 { subj: "Факультетская терапия", start: "21.09", end: "10.10" },
-                { subj: "Оказание первой врачебной помощи", start: "12.10", end: "17.10" },
+                { 
+                    subj: "Оказание первой врачебной помощи", 
+                    start: "12.10", 
+                    end: "17.10",
+                    specialDays: [
+                        { date: "12.10", loc: "Дистанционно через Salut Jazz" },
+                        { date: "13.10", loc: "Дистанционно через Salut Jazz" },
+                        { date: "14.10", loc: "ДГБ 3 (Большой пр. В.О., д. 77/17)" },
+                        { date: "15.10", loc: "24 ССМП (ул. Новосибирская, д. 15, корп. 1)" },
+                        { date: "16.10", loc: "Кафедра АиР (над 1-й аудиторией, 2-й этаж)" }
+                    ]
+                },
                 { subj: "Дерматология", start: "19.10", end: "31.10" },
                 { subj: "Неврология", start: "02.11", end: "14.11" },
                 { subj: "Факультетская хирургия", start: "16.11", end: "25.11", loc: "НИИ Скорой помощи им. И.И. Джанелидзе", teacher: "Ульянов Юрий Николаевич", note: "Время занятий уточняется" },
@@ -270,7 +281,13 @@
                     ]
                 },
                 { subj: "Факультетская педиатрия, эндокринология", start: "17.09", end: "03.10" },
-                { subj: "Факультетская терапия, проф. болезни", start: "05.10", end: "17.10" },
+                { 
+                    subj: "Факультетская терапия, проф. болезни", 
+                    start: "05.10", 
+                    end: "17.10",
+                    loc: "Клиника РЖД (пр-т Мечникова, 27)",
+                    note: "Начало занятий в 10:00"
+                },
                 { subj: "Оториноларингология", start: "19.10", end: "31.10" },
                 { subj: "Травматология и ортопедия", start: "02.11", end: "11.11" },
                 { subj: "Факультетская хирургия", start: "12.11", end: "18.11", loc: "Мариинская больница", teacher: "Липская Елена Викторовна", note: "Время начала уточняется" },
@@ -366,9 +383,9 @@
                     const special = getSpecialForDate(e, d);
                     if (special) {
                         evCopy.location = special.loc;
-                        evCopy.specialTime = special.time;
+                        evCopy.specialTime = special.time || null;
                         evCopy.teacher = special.teacher || null;
-                        evCopy.note = null;
+                        evCopy.note = special.note || null;
                         evCopy.isSpecial = true;
                     }
                     practicals.push(evCopy);
@@ -386,7 +403,7 @@
         let timeText;
         if (e.type === 'Лекция') {
             timeText = e.time;
-        } else if (e.isSpecial) {
+        } else if (e.isSpecial && e.specialTime) {
             timeText = "🕘 " + e.specialTime;
         } else {
             timeText = fmtShort(e.start) + ' – ' + fmtShort(e.end);
@@ -396,8 +413,10 @@
         if (e.teacher) extra += `<div class="location">👨‍🏫 ${e.teacher}</div>`;
         if (e.note)    extra += `<div class="location">⏰ ${e.note}</div>`;
         
+        // Строка "Цикл: …" внизу показывается ТОЛЬКО если сверху особое время
+        // (иначе диапазон цикла и так виден сверху — без дублирования)
         let periodNote = '';
-        if (e.type === 'Практика' && e.isSpecial) {
+        if (e.type === 'Практика' && e.isSpecial && e.specialTime) {
             periodNote = `<div class="location" style="opacity:0.7">Цикл: ${fmtShort(e.start)} – ${fmtShort(e.end)}</div>`;
         }
         
