@@ -229,9 +229,9 @@
                     teacher: "Куренков Александр Викторович", 
                     note: "Начало занятий в 9:15",
                     specialDays: [
-                        { date: "01.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", time: "9:30", teacher: "Куренков Александр Викторович" },
-                        { date: "03.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", time: "9:30", teacher: "Куренков Александр Викторович" },
-                        { date: "04.09", loc: "метро Чкаловская снаружи", time: "9:00 – 10:55" }
+                        { date: "01.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", teacher: "Куренков Александр Викторович", note: "Начало занятий в 9:30" },
+                        { date: "03.09", loc: "СЗОНКЦ им. Л.Г. Соколова (пр. Луначарского, 49)", teacher: "Куренков Александр Викторович", note: "Начало занятий в 9:30" },
+                        { date: "04.09", loc: "метро Чкаловская снаружи", note: "Занятие с 9:00 до 10:55" }
                     ]
                 },
                 { subj: "Факультетская терапия", start: "21.09", end: "10.10" },
@@ -243,11 +243,18 @@
                         { date: "12.10", loc: "Дистанционно через Salut Jazz" },
                         { date: "13.10", loc: "Дистанционно через Salut Jazz" },
                         { date: "14.10", loc: "ДГБ 3 (Большой пр. В.О., д. 77/17)" },
-                        { date: "15.10", loc: "24 ССМП (ул. Новосибирская, д. 15, корп. 1)" },
+                        { date: "15.10", loc: "24 ССМП (ул. Новосибирская, д. 15, корп. 1)", note: "Начало занятий в 10:00" },
                         { date: "16.10", loc: "Кафедра АиР (над 1-й аудиторией, 2-й этаж)" }
                     ]
                 },
-                { subj: "Дерматология", start: "19.10", end: "31.10" },
+                { 
+                    subj: "Дерматология", 
+                    start: "19.10", 
+                    end: "31.10",
+                    specialDays: [
+                        { date: "19.10", loc: "Кожвендиспансер №3 (Рижский проспект, 43)", note: "Начало занятий в 9:30" }
+                    ]
+                },
                 { subj: "Неврология", start: "02.11", end: "14.11" },
                 { subj: "Факультетская хирургия", start: "16.11", end: "25.11", loc: "НИИ Скорой помощи им. И.И. Джанелидзе", teacher: "Ульянов Юрий Николаевич", note: "Время занятий уточняется" },
                 { subj: "Офтальмология", start: "26.11", end: "12.12" },
@@ -276,8 +283,8 @@
                     start: "01.09", 
                     end: "16.09",
                     specialDays: [
-                        { date: "01.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", time: "9:30", teacher: "Виталий Анвярович" },
-                        { date: "02.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", time: "10:00", teacher: "Виталий Анвярович" }
+                        { date: "01.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", teacher: "Виталий Анвярович", note: "Начало занятий в 9:30" },
+                        { date: "02.09", loc: "ДГБ №3 (Большой просп. Васильевского острова, 77/17М)", teacher: "Виталий Анвярович", note: "Начало занятий в 10:00" }
                     ]
                 },
                 { subj: "Факультетская педиатрия, эндокринология", start: "17.09", end: "03.10" },
@@ -340,7 +347,7 @@
             });
             DATA[key].practicals.forEach(p => {
                 schedules[key].push({
-                    type: 'Практика', title: p.subj, time: "Практика (цикл)",
+                    type: 'Практика', title: p.subj,
                     start: parseDate(p.start), end: parseDate(p.end),
                     location: p.loc || "По расписанию кафедр",
                     teacher: p.teacher || null,
@@ -376,17 +383,15 @@
         let lectures = [], practicals = [];
         schedules[key].forEach(e => {
             if (e.type === 'Лекция') {
-                if (e.date.toDateString() === d.toDateString()) lectures.push({...e, _date: d});
+                if (e.date.toDateString() === d.toDateString()) lectures.push({...e});
             } else if (e.type === 'Практика') {
                 if (d >= e.start && d <= e.end) {
-                    const evCopy = {...e, _date: d};
+                    const evCopy = {...e};
                     const special = getSpecialForDate(e, d);
                     if (special) {
                         evCopy.location = special.loc;
-                        evCopy.specialTime = special.time || null;
                         evCopy.teacher = special.teacher || null;
                         evCopy.note = special.note || null;
-                        evCopy.isSpecial = true;
                     }
                     practicals.push(evCopy);
                 }
@@ -400,25 +405,14 @@
         div.className = 'event';
         const badgeClass = e.type === 'Лекция' ? 'lec' : 'prac';
         
-        let timeText;
-        if (e.type === 'Лекция') {
-            timeText = e.time;
-        } else if (e.isSpecial && e.specialTime) {
-            timeText = "🕘 " + e.specialTime;
-        } else {
-            timeText = fmtShort(e.start) + ' – ' + fmtShort(e.end);
-        }
+        // Слева: у лекций — время пары, у практик — всегда диапазон цикла
+        const timeText = e.type === 'Лекция'
+            ? e.time
+            : fmtShort(e.start) + ' – ' + fmtShort(e.end);
         
         let extra = `<div class="location">📍 ${e.location}</div>`;
         if (e.teacher) extra += `<div class="location">👨‍🏫 ${e.teacher}</div>`;
         if (e.note)    extra += `<div class="location">⏰ ${e.note}</div>`;
-        
-        // Строка "Цикл: …" внизу показывается ТОЛЬКО если сверху особое время
-        // (иначе диапазон цикла и так виден сверху — без дублирования)
-        let periodNote = '';
-        if (e.type === 'Практика' && e.isSpecial && e.specialTime) {
-            periodNote = `<div class="location" style="opacity:0.7">Цикл: ${fmtShort(e.start)} – ${fmtShort(e.end)}</div>`;
-        }
         
         div.innerHTML = `
             <div class="time">${timeText}</div>
@@ -426,7 +420,6 @@
                 <span class="badge ${badgeClass}">${e.type}</span>
                 <div class="title">${e.title}</div>
                 ${extra}
-                ${periodNote}
             </div>
         `;
         return div;
